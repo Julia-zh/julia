@@ -761,6 +761,9 @@ static int lookup_pointer(DIContext *context, jl_frame_t **frames,
         }
         return 1;
     }
+    jl_ptls_t ptls = jl_get_ptls_states();
+    int8_t gc_state = jl_gc_safe_enter(ptls);
+    JL_LOCK_NOGC(&codegen_lock);
 #if JL_LLVM_VERSION >= 30500
     DILineInfoSpecifier infoSpec(DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath,
                                  DILineInfoSpecifier::FunctionNameKind::ShortName);
@@ -774,9 +777,12 @@ static int lookup_pointer(DIContext *context, jl_frame_t **frames,
 
     int fromC = (*frames)[0].fromC;
     int n_frames = inlineInfo.getNumberOfFrames();
-    if (n_frames == 0)
+    if (n_frames == 0) {
+        JL_UNLOCK_NOGC(&codegen_lock);
+        jl_gc_safe_leave(gc_state);
         // no line number info available in the context, return without the context
         return lookup_pointer(NULL, frames, pointer, demangle, noInline);
+    }
     if (noInline)
         n_frames = 1;
     if (n_frames > 1) {
@@ -834,6 +840,8 @@ static int lookup_pointer(DIContext *context, jl_frame_t **frames,
         else
             jl_copy_str(&frame->file_name, file_name.c_str());
     }
+    JL_UNLOCK_NOGC(&codegen_lock);
+    jl_gc_safe_leave(gc_state);
     return n_frames;
 }
 
