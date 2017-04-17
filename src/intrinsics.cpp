@@ -177,22 +177,14 @@ static Constant *julia_const_to_llvm(void *ptr, jl_value_t *bt)
         }
         case 2: {
             uint16_t data16 = *(uint16_t*)ptr;
-#ifndef DISABLE_FLOAT16
-            if (jl_is_floattype(bt))
-                return ConstantFP::get(jl_LLVMContext, LLVM_FP(APFloat::IEEEhalf,APInt(16,data16)));
-#endif
             return ConstantInt::get(T_int16, data16);
         }
         case 4: {
             uint32_t data32 = *(uint32_t*)ptr;
-            if (jl_is_floattype(bt))
-                return ConstantFP::get(jl_LLVMContext, LLVM_FP(APFloat::IEEEsingle,APInt(32,data32)));
             return ConstantInt::get(T_int32, data32);
         }
         case 8: {
             uint64_t data64 = *(uint64_t*)ptr;
-            if (jl_is_floattype(bt))
-                return ConstantFP::get(jl_LLVMContext, LLVM_FP(APFloat::IEEEdouble,APInt(64,data64)));
             return ConstantInt::get(T_int64, data64);
         }
         default:
@@ -212,10 +204,6 @@ static Constant *julia_const_to_llvm(void *ptr, jl_value_t *bt)
             else
 #endif
             val = APInt(8*nb, ArrayRef<uint64_t>(data, nw));
-            if (nb == 16 && jl_is_floattype(bt)) {
-                return ConstantFP::get(jl_LLVMContext,LLVM_FP(APFloat::IEEEquad,val));
-                // If we have a floating point type that's not hardware supported, just treat it like an integer for LLVM purposes
-            }
             return ConstantInt::get(IntegerType::get(jl_LLVMContext,8*nb),val);
         }
     }
